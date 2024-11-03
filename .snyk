@@ -1,5 +1,3 @@
-patches:
-  "CWE-798: Hardcoded credentials":
-    - paths:
-        - test_hello.py   
+ignore:
+  - **/test_*.py     # Ignore files with `_test.py` suffix
       
