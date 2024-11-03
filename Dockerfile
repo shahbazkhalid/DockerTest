@@ -1,27 +1,38 @@
 # Use the official Python 3.11 image from Docker Hub
-FROM python:3.10-slim
+# FROM ubuntu:noble
 
-# Install required tools for building zlib
-RUN apt-get update && apt-get install -y \
-    build-essential \
-    wget \
-    && rm -rf /var/lib/apt/lists/*
+FROM python:3.12.7-slim-bookworm
 
-# Download and install zlib 1.3.1
-RUN wget https://zlib.net/zlib-1.3.1.tar.gz && \
-    tar -xzf zlib-1.3.1.tar.gz && \
-    cd zlib-1.3.1 && \
-    ./configure && make && make install && \
-    cd .. && rm -rf zlib-1.3.1 zlib-1.3.1.tar.gz
+# Set environment variables
+ENV PYTHONUNBUFFERED=1
 
-# Clean up build dependencies
-RUN apt-get purge -y build-essential && apt-get autoremove -y
+# Install necessary packages
+RUN apt-get update -qy && \
+    apt-get install -qyy \
+    -o APT::Install-Recommends=false \
+    -o APT::Install-Suggests=false \
+    ca-certificates \
+#    python3 \
+#    python3-pip \
+    && apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
+# RUN apt-get -y remove python3-setuptools
+
+# Upgrade setuptools to the latest secure version
+# RUN pip install --upgrade setuptools
 
 # Set the working directory inside the container
 WORKDIR /app
 
 # Copy the hello_world.py script to the container
-COPY hello_world.py .
+# COPY hello_world.py .
 
 # Command to run the Python script
-CMD ["python", "hello_world.py"]
+# CMD ["python3", "hello_world.py"]
+
+# Create a Python script to check setuptools version
+RUN echo 'import setuptools; print("setuptools version:", setuptools.__version__)' > check_setuptools.py
+
+# Run the script to check the version of setuptools
+CMD ["python3", "check_setuptools.py"]
