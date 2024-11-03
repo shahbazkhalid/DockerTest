@@ -1,0 +1,5 @@
+patches:
+  "CWE-798: Hardcoded credentials":
+    - paths:
+        - test_hello.py   
+      
