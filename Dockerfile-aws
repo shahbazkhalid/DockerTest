@@ -1,0 +1,83 @@
+# Stage 1: Builder stage for building Python and dependencies
+FROM public.ecr.aws/amazonlinux/amazonlinux:2023-minimal AS builder
+
+# Install required build tools and dependencies
+RUN dnf install -y \
+    gcc \
+    openssl-devel \
+    bzip2-devel \
+    libffi-devel \
+    make \
+    zlib-devel \
+    wget \
+    tar \
+    dnf-plugins-core && \
+    dnf clean all
+
+# Install Python 3.12
+WORKDIR /usr/src
+RUN wget https://www.python.org/ftp/python/3.12.0/Python-3.12.0.tgz && \
+    tar xzf Python-3.12.0.tgz && \
+    cd Python-3.12.0 && \
+    ./configure --enable-optimizations --with-lto --disable-static && \
+    make altinstall && \
+    strip /usr/local/bin/python3.12
+
+# Upgrade pip and install virtualenv
+RUN /usr/local/bin/python3.12 -m pip install --upgrade pip && \
+    /usr/local/bin/python3.12 -m pip install virtualenv
+
+# Create virtual environment and install dependencies
+WORKDIR /app
+COPY requirements.txt .
+RUN virtualenv venv -p /usr/local/bin/python3.12 && \
+    source venv/bin/activate && \
+    pip install --no-cache-dir -r requirements.txt
+
+# Clean up build tools and Python source code
+RUN dnf remove -y \
+    annobin-plugin-gcc \
+    gcc \
+    openssl-devel \
+    bzip2-devel \
+    libffi-devel \
+    make \
+    zlib-devel \
+    wget && \
+    dnf clean all && \
+    rm -rf /usr/src/Python-3.12.0 /usr/src/Python-3.12.0.tgz
+
+# Stage 2: Final minimal runtime environment
+FROM public.ecr.aws/amazonlinux/amazonlinux:2023-minimal
+
+# Install minimal runtime dependencies
+RUN dnf install -y \
+    libffi \
+    openssl \
+    bzip2 \
+    zlib \
+    shadow-utils && \
+    dnf clean all
+
+# Copy Python and virtual environment from the builder stage
+COPY --from=builder /usr/local /usr/local
+COPY --from=builder /app/venv /app/venv
+
+# Set environment variables
+ENV PATH="/app/venv/bin:$PATH"
+
+# Copy application code
+COPY . /app
+
+# Set working directory
+WORKDIR /app
+
+# Set a non-root user for security
+RUN useradd -m appuser
+USER appuser
+
+# Health check for the application
+# HEALTHCHECK CMD curl --fail http://localhost:8080/health || exit 1
+
+# Command to run the application using -OO for optimizations
+CMD ["python", "-OO", "hello_world.py"]

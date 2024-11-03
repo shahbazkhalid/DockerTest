@@ -1,0 +1,36 @@
+# Use Ubuntu Noble as the base image
+FROM ubuntu:noble
+
+# Set environment variables
+ENV PYTHONUNBUFFERED=1
+
+# Install necessary packages
+RUN apt-get update -qy && \
+    apt-get install -qyy \
+    -o APT::Install-Recommends=false \
+    -o APT::Install-Suggests=false \
+    python3 \
+    python3-pip \
+    python3-venv \
+    && apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+    
+# Set the working directory inside the container
+WORKDIR /app
+
+# Create and activate a virtual environment
+RUN python3 -m venv /app/venv
+
+# Ensure the virtual environment is used for all following commands
+ENV PATH="/app/venv/bin:$PATH"
+
+# Copy the requirements file and install dependencies
+COPY requirements.txt .
+RUN pip install --upgrade pip
+RUN pip install -r requirements.txt
+
+# Set the working directory to the app folder
+WORKDIR /app
+
+# Command to check Python version (you can replace this with your actual command)
+CMD ["python3", "--version"]

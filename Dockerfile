@@ -1,38 +1,40 @@
-# Use the official Python 3.11 image from Docker Hub
-# FROM ubuntu:noble
+# Use Amazon Linux 2023 minimal base image
+FROM public.ecr.aws/amazonlinux/amazonlinux:2023-minimal
 
-FROM python:3.12.7-slim-bookworm
+# Install Python, pip, and any necessary build tools
+RUN dnf install -y python3 python3-pip shadow-utils \
+    # && dnf update libarchive --releasever 2023.6.20241028 \
+    # && dnf update python3.11-setuptools --releasever 2023.6.20241028 \
+    # && dnf update python-setuptools --releasever 2023.1.20230719 \
+    # && dnf update python-pip --releasever 2023.3.20231211 \
+    && rm -rf /var/cache/dnf \
+    && dnf clean all
+    
 
-# Set environment variables
-ENV PYTHONUNBUFFERED=1
-
-# Install necessary packages
-RUN apt-get update -qy && \
-    apt-get install -qyy \
-    -o APT::Install-Recommends=false \
-    -o APT::Install-Suggests=false \
-    ca-certificates \
-#    python3 \
-#    python3-pip \
-    && apt-get clean && \
-    rm -rf /var/lib/apt/lists/*
-
-# RUN apt-get -y remove python3-setuptools
-
-# Upgrade setuptools to the latest secure version
-# RUN pip install --upgrade setuptools
-
-# Set the working directory inside the container
+# Set the working directory
 WORKDIR /app
 
-# Copy the hello_world.py script to the container
-# COPY hello_world.py .
+# Copy requirements.txt first to leverage Docker caching
+COPY requirements.txt .
 
-# Command to run the Python script
-# CMD ["python3", "hello_world.py"]
 
-# Create a Python script to check setuptools version
-RUN echo 'import setuptools; print("setuptools version:", setuptools.__version__)' > check_setuptools.py
+# Create a non-root user and set permissions
+# RUN useradd -m appuser
 
-# Run the script to check the version of setuptools
-CMD ["python3", "check_setuptools.py"]
+# Set the working directory
+WORKDIR /app
+
+# Copy your application files 
+COPY ./hello_world.py .
+
+# Install Python dependencies
+RUN pip3 install --no-cache-dir -r requirements.txt \
+    && useradd -m appuser \
+    && chown -R appuser:appuser /app \ 
+    && dnf clean all 
+
+# Switch to the non-root user
+USER appuser
+
+# Command to run your application
+CMD ["python3", "hello_world.py"]
